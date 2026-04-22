@@ -21,10 +21,10 @@ classifiers=[
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "torch>=2.9.0",  
+    "torch>=2.9.0",
     "pulser-core[torch]>=1.7.0",
     "emu_base"
-    
+
 ]
 
 [project.optional-dependencies]
@@ -35,3 +35,12 @@ dev = [
     "emu_mps",
     "emu_sv"
 ]
+
+
+[tool.isort]
+line_length = 90
+combine_as_imports = true
+balanced_wrapping = true
+lines_after_imports = 2
+include_trailing_comma = true
+multi_line_output = 5
