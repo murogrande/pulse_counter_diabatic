@@ -8,9 +8,6 @@ from pulser.backend import EmulationConfig
 def from_rydberg_to_ising(
     seq: pulser.Sequence, config: EmulationConfig
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Takes a pulser sequence (Omega, delta), only real Hamiltonians,
-    in the Rybderg representation and returns the modified Omega, delta in
-    the Ising representation."""
 
     dt = config.dt
     pulser_data = emu_base.pulser_adapter.PulserData(sequence=seq, config=config, dt=dt)
