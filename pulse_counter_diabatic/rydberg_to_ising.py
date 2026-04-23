@@ -8,25 +8,29 @@ from pulser.backend import EmulationConfig
 def from_rydberg_to_ising(
     seq: pulser.Sequence, config: EmulationConfig
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Convert a Rydberg Pulser sequence to Ising model parameters.
 
-    dt = config.dt
-    pulser_data = emu_base.pulser_adapter.PulserData(sequence=seq, config=config, dt=dt)
-    sequence_data = pulser_data.get_sequences()
-    omegas = [
-        i.omega.to(dtype=torch.float64).requires_grad_(True) for i in sequence_data
-    ]
-    sequence_data = pulser_data.get_sequences()
-    deltas = [
-        i.delta.to(dtype=torch.float64).requires_grad_(True) for i in sequence_data
-    ]
-    sequence_data = pulser_data.get_sequences()
+    Maps the Rydberg Hamiltonian (Ω σˣ - δ n + U nᵢnⱼ) to the Ising form
+    (ω σˣ + μ σʸ + ν σᶻ + J σᶻσᶻ) via the substitution nᵢ = (1 - σᶻᵢ)/2.
 
-    interact_full = [i.interaction_matrix.full_matrix for i in sequence_data]
+    Args:
+        seq: Pulser sequence encoding the Rydberg drive and detuning.
+        config: Emulation config supplying the time step and device layout.
 
-    omegas = omegas[0]  # only torch tensors for optimization loop
-    deltas = deltas[0]
-    # phis = phis[0] # only real hamiltonians
-    interact_mat = interact_full[0]  # (n_atoms, n_atoms), time-independent
+    Returns:
+        omegas_ising: Half-Rabi drive, shape (T, N). Coefficients of σˣ.
+        deltas_ising: Shifted detuning, shape (T, N). Coefficients of σᶻ.
+        phis_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
+        interact_mat_ising: Rescaled interaction matrix (U/4), shape (N, N).
+    """
+    pulser_data = emu_base.pulser_adapter.PulserData(
+        sequence=seq, config=config, dt=config.dt
+    )
+    seq0 = next(pulser_data.get_sequences())
+
+    omegas = seq0.omega.to(dtype=torch.float64).requires_grad_(True)
+    deltas = seq0.delta.to(dtype=torch.float64).requires_grad_(True)
+    interact_mat = seq0.interaction_matrix.full_matrix
 
     omegas_ising = 0.5 * omegas
     deltas_ising = torch.zeros_like(deltas)
