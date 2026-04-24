@@ -19,8 +19,8 @@ def from_rydberg_to_ising(
 
     Returns:
         omegas_ising: Half-Rabi drive, shape (T, N). Coefficients of σˣ.
-        deltas_ising: Shifted detuning, shape (T, N). Coefficients of σᶻ.
-        phis_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
+        nus_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
+        mus_ising: Shifted detuning, shape (T, N). Coefficients of σᶻ.
         interact_mat_ising: Rescaled interaction matrix (U/4), shape (N, N).
     """
 
@@ -34,11 +34,12 @@ def from_rydberg_to_ising(
     deltas = seq0.delta.to(dtype=torch.float64).requires_grad_(True)
     interact_mat = seq0.interaction_matrix(0.0)  # matrix is constant in time
 
-    omegas_ising = 0.5 * omegas
-    deltas_ising = torch.zeros_like(deltas)
+    omegas_ising = 0.5 * omegas  # ω
+    mus_ising = torch.zeros_like(omegas)  # μ
+    nus_ising = torch.zeros_like(deltas)  # ν
     for i in range(deltas.shape[1]):
         U_ij_sum = torch.sum(interact_mat[i])
-        deltas_ising[:, i] = 0.5 * deltas[:, i] - 0.25 * U_ij_sum
-    phis_ising = torch.zeros_like(omegas)
+        nus_ising[:, i] = 0.5 * deltas[:, i] - 0.25 * U_ij_sum
+
     interact_mat_ising = 0.25 * interact_mat
-    return omegas_ising, deltas_ising, phis_ising, interact_mat_ising
+    return omegas_ising, mus_ising, nus_ising, interact_mat_ising

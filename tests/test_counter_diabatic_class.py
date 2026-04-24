@@ -39,13 +39,13 @@ def test_derivative():
     omega_expected = omega_expected.unsqueeze(1).repeat(1, num_atoms)
     assert torch.allclose(domega, omega_expected, atol=1e-2)
 
-    delta_expected = torch.tensor(
+    nu_expected = torch.tensor(
         [(2 * delta_val / 2 - 0.25 * interaction_matrix[0].sum()) / T] * int(T / dt),
         dtype=torch.float64,
     )
 
-    delta_expected = delta_expected.unsqueeze(1).repeat(1, num_atoms)
-    assert torch.allclose(dmu, delta_expected, atol=1e-2)
+    nu_expected = nu_expected.unsqueeze(1).repeat(1, num_atoms)
+    assert torch.allclose(dnu, nu_expected, atol=1e-2)
 
-    phi_expected = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
-    assert torch.allclose(dnu, phi_expected)
+    mu_expected = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
+    assert torch.allclose(dmu, mu_expected)

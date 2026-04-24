@@ -1,6 +1,6 @@
+import torch
 import pulser
 from pulse_counter_diabatic.rydberg_to_ising import from_rydberg_to_ising
-import torch
 from pulser.backend import EmulationConfig
 
 
@@ -13,14 +13,17 @@ class CounterDiabaticPulse:
             self.interaction_mat_ising,
         ) = from_rydberg_to_ising(seq, config)
         self.dt = config.dt
+        self.n_atoms = len(seq.register.qubit_ids)
 
     def compute_derivatives_analytical(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Differentiate Ising pulse parameters using 2nd-order finite differences.
+        """Differentiate Ising pulse parameters using 2nd-order finite
+        differences.
 
-        Uses a 3-point forward stencil at t=0, centered differences in the interior,
-        and a 3-point backward stencil at t=T to preserve tensor shape.
+        Uses a 3-point forward stencil at t=0, centered differences in the
+        interior, and a 3-point backward stencil at t=T to preserve tensor
+        shape.
 
         Returns:
             domegas: Time derivative of ω (σˣ coefficients), shape (T, N).

@@ -25,8 +25,8 @@ def test_rydberg_to_ising_2_atoms():
         dt=dt, interaction_matrix=interaction_matrix, observables=observable
     )
 
-    omegas_ising, deltas_ising, phis_ising, interact_matrix_ising = (
-        from_rydberg_to_ising(seq, emu_mps_config)
+    omegas_ising, mus_ising, nus_ising, interact_matrix_ising = from_rydberg_to_ising(
+        seq, emu_mps_config
     )
 
     expected_interaction_matrix = 0.25 * interaction_matrix
@@ -38,14 +38,14 @@ def test_rydberg_to_ising_2_atoms():
     )
     assert torch.allclose(omegas_ising, expected_omegas_ising)
 
-    delta = [delta_val / 2 - 0.25 * torch.sum(interaction_matrix[0])] * int(T / dt)
-    expected_deltas_ising = torch.stack(
-        [torch.tensor(delta, dtype=torch.float64) for _ in range(num_atoms)], dim=1
+    nus = [delta_val / 2 - 0.25 * torch.sum(interaction_matrix[0])] * int(T / dt)
+    expected_nus_ising = torch.stack(
+        [torch.tensor(nus, dtype=torch.float64) for _ in range(num_atoms)], dim=1
     )
-    assert torch.allclose(deltas_ising, expected_deltas_ising)
+    assert torch.allclose(nus_ising, expected_nus_ising)
 
-    expected_phis_ising = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
-    assert torch.allclose(phis_ising, expected_phis_ising)
+    expected_mus_ising = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
+    assert torch.allclose(mus_ising, expected_mus_ising)
 
 
 def test_rydberg_to_ising_3_atoms():
@@ -67,8 +67,8 @@ def test_rydberg_to_ising_3_atoms():
     )
     emu_mps_config = emu_mps.MPSConfig(dt=dt, interaction_matrix=interaction_matrix)
 
-    omegas_ising, deltas_ising, phis_ising, interact_matrix_ising = (
-        from_rydberg_to_ising(seq, emu_mps_config)
+    omegas_ising, mus_ising, nus_ising, interact_matrix_ising = from_rydberg_to_ising(
+        seq, emu_mps_config
     )
 
     expected_interaction_matrix = 0.25 * interaction_matrix
@@ -82,13 +82,13 @@ def test_rydberg_to_ising_3_atoms():
 
     delta = torch.tensor([delta_val] * int(T / dt))
     delta = torch.stack([delta] * num_atoms, dim=1)
-    expected_deltas_ising = torch.zeros_like(deltas_ising)
+    expected_nus_ising = torch.zeros_like(nus_ising)
     for i in range(num_atoms):
-        expected_deltas_ising[:, i] = 0.5 * delta[:, i] - 0.25 * torch.sum(
+        expected_nus_ising[:, i] = 0.5 * delta[:, i] - 0.25 * torch.sum(
             interaction_matrix[i]
         )
 
-    assert torch.allclose(deltas_ising, expected_deltas_ising)
+    assert torch.allclose(nus_ising, expected_nus_ising)
 
-    expected_phis_ising = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
-    assert torch.allclose(phis_ising, expected_phis_ising)
+    expected_mus_ising = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
+    assert torch.allclose(mus_ising, expected_mus_ising)
