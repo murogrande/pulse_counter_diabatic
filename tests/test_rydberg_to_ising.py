@@ -1,6 +1,7 @@
 from pulse_counter_diabatic.rydberg_to_ising import from_rydberg_to_ising
 from emu_mps import BitStrings
 import pulser
+import pytest
 import torch
 import emu_mps
 
@@ -21,6 +22,7 @@ def test_rydberg_to_ising_2_atoms():
     interaction_matrix = torch.tensor([[0.0, 1.0], [1.0, 0.0]], dtype=torch.float64)
     evaluation_times = [1.0]
     observable = [BitStrings(evaluation_times=evaluation_times)]
+
     emu_mps_config = emu_mps.MPSConfig(
         dt=dt, interaction_matrix=interaction_matrix, observables=observable
     )
@@ -92,3 +94,19 @@ def test_rydberg_to_ising_3_atoms():
 
     expected_mus_ising = torch.zeros(int(T / dt), num_atoms, dtype=torch.float64)
     assert torch.allclose(mus_ising, expected_mus_ising)
+
+
+def test_rydberg_to_ising_no_observables_warning():
+    reg = pulser.Register.rectangle(1, 2, prefix="q", spacing=torch.tensor(7.0))
+    seq = pulser.Sequence(reg, pulser.MockDevice)
+    seq.declare_channel("ising_global", "rydberg_global")
+    seq.add(pulser.Pulse.ConstantPulse(100, 7.0, 5.0, 0.0), "ising_global")
+
+    interaction_matrix = torch.tensor([[0.0, 1.0], [1.0, 0.0]], dtype=torch.float64)
+    observable = [BitStrings(evaluation_times=[1.0])]
+    config = emu_mps.MPSConfig(
+        dt=10, interaction_matrix=interaction_matrix, observables=observable
+    )
+
+    with pytest.warns(UserWarning, match="initialized without any observables"):
+        from_rydberg_to_ising(seq, config)
