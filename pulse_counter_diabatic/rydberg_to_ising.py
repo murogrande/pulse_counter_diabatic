@@ -30,7 +30,7 @@ def from_rydberg_to_ising(
 
     omegas = seq0.omega.to(dtype=torch.float64).requires_grad_(True)
     deltas = seq0.delta.to(dtype=torch.float64).requires_grad_(True)
-    interact_mat = seq0.interaction_matrix.full_matrix
+    interact_mat = seq0.interaction_matrix(0.0)  # matrix is constant in time
 
     omegas_ising = 0.5 * omegas
     deltas_ising = torch.zeros_like(deltas)
