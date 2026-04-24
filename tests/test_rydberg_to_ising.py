@@ -1,4 +1,5 @@
 from pulse_counter_diabatic.rydberg_to_ising import from_rydberg_to_ising
+from emu_mps import BitStrings
 import pulser
 import torch
 import emu_mps
@@ -6,7 +7,6 @@ import emu_mps
 
 def test_rydberg_to_ising_2_atoms():
     num_atoms = 2
-
     reg = pulser.Register.rectangle(1, num_atoms, prefix="q", spacing=torch.tensor(7.0))
 
     T = 100
@@ -19,7 +19,11 @@ def test_rydberg_to_ising_2_atoms():
 
     dt = 10
     interaction_matrix = torch.tensor([[0.0, 1.0], [1.0, 0.0]], dtype=torch.float64)
-    emu_mps_config = emu_mps.MPSConfig(dt=dt, interaction_matrix=interaction_matrix)
+    evaluation_times = [1.0]
+    observable = [BitStrings(evaluation_times=evaluation_times)]
+    emu_mps_config = emu_mps.MPSConfig(
+        dt=dt, interaction_matrix=interaction_matrix, observables=observable
+    )
 
     omegas_ising, deltas_ising, phis_ising, interact_matrix_ising = (
         from_rydberg_to_ising(seq, emu_mps_config)

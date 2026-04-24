@@ -10,7 +10,7 @@ def from_rydberg_to_ising(
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Convert a Rydberg Pulser sequence to Ising model parameters.
 
-    Maps the Rydberg Hamiltonian (Ω σˣ - δ n + U nᵢnⱼ) to the Ising form
+    Maps the Rydberg Hamiltonian (Ω/2 σˣ - δ n + U/2 nᵢnⱼ) to the Ising form
     (ω σˣ + μ σʸ + ν σᶻ + J σᶻσᶻ) via the substitution nᵢ = (1 - σᶻᵢ)/2.
 
     Args:
@@ -23,8 +23,10 @@ def from_rydberg_to_ising(
         phis_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
         interact_mat_ising: Rescaled interaction matrix (U/4), shape (N, N).
     """
+
+    cd_config = config.with_changes(observables=[])
     pulser_data = emu_base.pulser_adapter.PulserData(
-        sequence=seq, config=config, dt=config.dt
+        sequence=seq, config=cd_config, dt=cd_config.dt
     )
     seq0 = next(pulser_data.get_sequences())
 
