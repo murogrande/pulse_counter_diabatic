@@ -17,7 +17,16 @@ class CounterDiabaticPulse:
     def compute_derivatives_analytical(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # finite diff the raw pulse params with 2nd-order stencils
+        """Differentiate Ising pulse parameters using 2nd-order finite differences.
+
+        Uses a 3-point forward stencil at t=0, centered differences in the interior,
+        and a 3-point backward stencil at t=T to preserve tensor shape.
+
+        Returns:
+            domegas: Time derivative of ω (σˣ coefficients), shape (T, N).
+            dmus: Time derivative of μ (σʸ coefficients), shape (T, N).
+            dnus: Time derivative of ν (σᶻ coefficients), shape (T, N).
+        """
 
         def diff2(x):
             d0 = (-3 * x[0:1] + 4 * x[1:2] - x[2:3]) / (2 * self.dt)
