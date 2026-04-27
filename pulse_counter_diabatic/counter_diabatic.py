@@ -15,7 +15,7 @@ class CounterDiabaticPulse:
         self.dt = config.dt
         self.n_atoms = len(seq.register.qubit_ids)
 
-    def compute_derivatives_analytical(
+    def compute_derivatives_numerically(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Differentiate Ising pulse parameters using 2nd-order finite
