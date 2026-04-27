@@ -44,3 +44,6 @@ balanced_wrapping = true
 lines_after_imports = 2
 include_trailing_comma = true
 multi_line_output = 5
+
+[flake8]
+max-line-length = 90
