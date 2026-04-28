@@ -12,9 +12,9 @@ def test_A_direct_mat_2_qubits():
     num_atoms = 2
 
     # parameters of the pulse at specific time step
-    Om_t = [torch.tensor(5.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
-    Mu_t = [torch.tensor(3.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
-    Nu_t = [torch.tensor(1.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
+    Om_t = torch.tensor([5.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
+    Mu_t = torch.tensor([3.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
+    Nu_t = torch.tensor([1.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
     U_t = torch.zeros((num_atoms, num_atoms), dtype=dtype)
     U_t[0, 1] = torch.tensor(7.0, dtype=dtype)
     U_t[1, 0] = torch.tensor(7.0, dtype=dtype)
@@ -81,9 +81,9 @@ def test_b_direct_2_qubits():
     n_total = n_single + n_sym + n_asym
 
     # derivative of Hamiltonian at a specific time step
-    dOmega_t = [torch.tensor(11.3 * (-1) ** k, dtype=dtype) for k in range(num_atoms)]
-    dMu_t = [torch.tensor(1.0, dtype=dtype) for _ in range(num_atoms)]
-    dNu_t = [torch.tensor(5.1 * (-1) ** k, dtype=dtype) for k in range(num_atoms)]
+    dOmega_t = torch.tensor([11.3 * (-1) ** k for k in range(num_atoms)], dtype=dtype)
+    dMu_t = torch.tensor([1.0 for _ in range(num_atoms)], dtype=dtype)
+    dNu_t = torch.tensor([5.1 * (-1) ** k for k in range(num_atoms)], dtype=dtype)
 
     b_vector = b_direct_vec(num_atoms, dOmega_t, dMu_t, dNu_t)
 
@@ -104,13 +104,14 @@ def test_A_direct_mat_3_qubits():
     num_atoms = 3
 
     # parameters of the pulse at specific time step
-    Om_t = [torch.tensor(5.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
-    Mu_t = [torch.tensor(3.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
-    Nu_t = [torch.tensor(1.0 + 0.1 * k, dtype=dtype) for k in range(num_atoms)]
-    U_t = {
-        (i, j): torch.tensor(7.0 + 0.1 * i + 0.01 * j, dtype=dtype)
-        for i, j in combinations(range(num_atoms), 2)
-    }
+    Om_t = torch.tensor([5.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
+    Mu_t = torch.tensor([3.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
+    Nu_t = torch.tensor([1.0 + 0.1 * k for k in range(num_atoms)], dtype=dtype)
+    U_t = torch.zeros((num_atoms, num_atoms), dtype=dtype)
+    for i, j in combinations(range(num_atoms), 2):
+        value = torch.tensor(7.0 + 0.1 * i + 0.01 * j, dtype=dtype)
+        U_t[i, j] = value
+        U_t[j, i] = value
 
     matrix_A = A_direct_mat(num_atoms, Om_t, Mu_t, Nu_t, U_t)
 
@@ -231,9 +232,9 @@ def test_b_direct_3_qubits():
     n_total = n_single + n_sym + n_asym
 
     # derivative of Hamiltonian at a specific time step
-    dOmega_t = [torch.tensor(11.3 * (-1) ** k, dtype=dtype) for k in range(num_atoms)]
-    dMu_t = [torch.tensor(1.0, dtype=dtype) for _ in range(num_atoms)]
-    dNu_t = [torch.tensor(5.1 * (-1) ** k, dtype=dtype) for k in range(num_atoms)]
+    dOmega_t = torch.tensor([11.3 * (-1) ** k for k in range(num_atoms)], dtype=dtype)
+    dMu_t = torch.tensor([1.0 for _ in range(num_atoms)], dtype=dtype)
+    dNu_t = torch.tensor([5.1 * (-1) ** k for k in range(num_atoms)], dtype=dtype)
 
     b_vector = b_direct_vec(num_atoms, dOmega_t, dMu_t, dNu_t)
 

@@ -23,7 +23,7 @@ def A_direct_mat(
     n_sym = 3 * len(list(combinations(range(n_atoms), 2)))
     n_asym = 3 * len(list(permutations(range(n_atoms), 2)))
     n_total = n_single + n_sym + n_asym
-    sps = n_single + n_sym  # sing_plus_sym
+    asym_start = n_single + n_sym  # sing_plus_sym
 
     rows: list[int] = []
     cols: list[int] = []
@@ -36,32 +36,37 @@ def A_direct_mat(
         vals += [-Omega_t[i], Mu_t[i], -Nu_t[i]]
 
     # ZZ interaction → asymmetric 2-body columns
-    z_0 = 2
+    asym_col = 2
     for i, j in combinations(range(n_atoms), 2):
-        u = U_t[i, j].real.detach()  # fixed by hardware, not a free parameter
+        u = U_t[i, j].detach()  # fixed by hardware, not a free parameter
         rows += [i * 3, i * 3 + 1, j * 3, j * 3 + 1]
-        cols += [sps + z_0, sps + z_0 - 1, sps + z_0 + 3, sps + z_0 + 2]
+        cols += [
+            asym_start + asym_col,
+            asym_start + asym_col - 1,
+            asym_start + asym_col + 3,
+            asym_start + asym_col + 2,
+        ]
         vals += [-u, u, -u, u]
-        z_0 += 6
+        asym_col += 6
 
     # symmetric 2-body × single-body coupling
-    z_0, l_0 = 0, 0
+    asym_col, block_offset = 0, 0
     for i, j in combinations(range(n_atoms), 2):
-        r = n_single + l_0
+        r = n_single + block_offset
         rows += [r, r, r, r, r + 1, r + 1, r + 1, r + 1, r + 2, r + 2, r + 2, r + 2]
         cols += [
-            sps + z_0,
-            sps + z_0 + 3,
-            sps + z_0 + 1,
-            sps + z_0 + 4,
-            sps + z_0,
-            sps + z_0 + 3,
-            sps + z_0 + 2,
-            sps + z_0 + 5,
-            sps + z_0 + 1,
-            sps + z_0 + 4,
-            sps + z_0 + 2,
-            sps + z_0 + 5,
+            asym_start + asym_col,
+            asym_start + asym_col + 3,
+            asym_start + asym_col + 1,
+            asym_start + asym_col + 4,
+            asym_start + asym_col,
+            asym_start + asym_col + 3,
+            asym_start + asym_col + 2,
+            asym_start + asym_col + 5,
+            asym_start + asym_col + 1,
+            asym_start + asym_col + 4,
+            asym_start + asym_col + 2,
+            asym_start + asym_col + 5,
         ]
         vals += [
             -Nu_t[j],
@@ -77,25 +82,25 @@ def A_direct_mat(
             Omega_t[i],
             Omega_t[j],
         ]
-        z_0 += 6
-        l_0 += 3
+        asym_col += 6
+        block_offset += 3
 
     # asymmetric 2-body self-coupling
-    z_0, l_0 = 1, 0
+    asym_col, block_offset = 1, 0
     for i, j in combinations(range(n_atoms), 2):
-        r = sps + l_0
+        r = asym_start + block_offset
         rows += [r, r + 3, r + 1, r + 4, r + 2, r]
         cols += [
-            sps + z_0,
-            sps + z_0 + 3,
-            sps + z_0 + 1,
-            sps + z_0 + 4,
-            sps + z_0 + 2,
-            sps + z_0 + 4,
+            asym_start + asym_col,
+            asym_start + asym_col + 3,
+            asym_start + asym_col + 1,
+            asym_start + asym_col + 4,
+            asym_start + asym_col + 2,
+            asym_start + asym_col + 4,
         ]
         vals += [-Omega_t[j], -Omega_t[i], -Nu_t[i], -Nu_t[j], -Mu_t[j], Mu_t[i]]
-        z_0 += 6
-        l_0 += 6
+        asym_col += 6
+        block_offset += 6
 
     # assemble via index_put (differentiable w.r.t. vals)
     vals_t = torch.stack(vals)
@@ -106,7 +111,9 @@ def A_direct_mat(
     return A_upper - A_upper.T
 
 
-def b_direct_vec(n_atoms, dOmega_t, dMu_t, dNu_t):
+def b_direct_vec(
+    n_atoms: int, dOmega_t: torch.Tensor, dMu_t: torch.Tensor, dNu_t: torch.Tensor
+) -> torch.Tensor:
     n_sym = 3 * len(list(combinations(range(n_atoms), 2)))
     n_asym = 3 * len(list(permutations(range(n_atoms), 2)))
 
