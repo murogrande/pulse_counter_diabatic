@@ -47,3 +47,10 @@ multi_line_output = 5
 
 [flake8]
 max-line-length = 90
+
+[tool.mypy]
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "emu_base.*"
+ignore_missing_imports = true
