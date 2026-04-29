@@ -31,7 +31,7 @@ def test_derivative():
 
     counter_diabatic_pulse = CounterDiabaticPulse(seq, emu_mps_config)
 
-    domega, dmu, dnu = counter_diabatic_pulse.compute_derivatives_analytical()
+    domega, dmu, dnu = counter_diabatic_pulse.compute_derivatives_numerically()
 
     omega_expected = torch.tensor(
         [omega_val / 2 / T] * int(T / dt), dtype=torch.float64

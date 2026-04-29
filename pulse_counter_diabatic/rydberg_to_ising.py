@@ -43,3 +43,26 @@ def from_rydberg_to_ising(
 
     interact_mat_ising = 0.25 * interact_mat
     return omegas_ising, mus_ising, nus_ising, interact_mat_ising
+
+
+def from_ising_to_rydberg(
+    omegas_ising: torch.Tensor,
+    mus_ising: torch.Tensor,
+    nus_ising: torch.Tensor,
+    interact_mat_ising: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Converting from Ising 𝜔ᵢ 𝜎ˣᵢ + 𝜇ᵢ  𝜎ʸᵢ +𝜈ᵢ 𝜎ᶻᵢ + Uᵢⱼ to Rydberg
+    Hamiltonian. Using the substitution 𝜎ᶻᵢ = 1 - 2 nᵢ"""
+
+    omegas_rydberg = omegas_ising
+
+    mus_rydberg = mus_ising
+
+    nus_rydberg = torch.zeros_like(omegas_ising)
+    for i in range(omegas_ising.shape[1]):
+        U_ij_sum = torch.sum(interact_mat_ising[i])
+        nus_rydberg[:, i] = 2 * nus_ising[:, i] + 2 * U_ij_sum
+
+    interact_mat_rydberg = 4 * interact_mat_ising
+
+    return omegas_rydberg, mus_rydberg, nus_rydberg, interact_mat_rydberg
