@@ -46,14 +46,14 @@ class CounterDiabaticPulse:
         domegas = diff2(self.omegas_ising)  # 𝜔ᵢ'
         dmus = diff2(self.mus_ising)  # 𝜇ᵢ'
         dnus = diff2(self.nus_ising)  # 𝜈ᵢ'
-        return domegas, dmus, dnus
+        return 2 * domegas, 2 * dmus, 2 * dnus
 
     def solver(self, nruns: int = 20):
         optimizer = torch.optim.Adam(
             [
-                {"params": self.omegas_ising, "lr": 1e-1},
-                {"params": self.mus_ising, "lr": 1e-1},
-                {"params": self.nus_ising, "lr": 1e-1},
+                {"params": self.omegas_ising, "lr": 1e-3},
+                {"params": self.mus_ising, "lr": 1e-3},
+                {"params": self.nus_ising, "lr": 1e-3},
             ]
         )
         for step in range(nruns):
@@ -70,7 +70,7 @@ class CounterDiabaticPulse:
                     self.interaction_mat_ising,
                 )
                 b_t = b_direct_vec(self.n_atoms, domegas[k], dmus[k], dnus[k])
-                coeffs = solve_cd_tikhonov(M_t, b_t)
+                coeffs = 0.5 * solve_cd_tikhonov(M_t, b_t)
 
                 loss = loss + (coeffs[3 * self.n_atoms :] ** 2).sum()
                 a_list.append(coeffs[0 : 3 * self.n_atoms : 3])  # X per qubit
