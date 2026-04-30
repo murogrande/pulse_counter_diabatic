@@ -124,10 +124,18 @@ def b_direct_vec(
     return torch.cat([singles, rest])
 
 
-def solve_cd_torch(M: torch.Tensor, b: torch.Tensor, reg: float = 1e-4) -> torch.Tensor:
+def solve_cd_torch(M: torch.Tensor, b: torch.Tensor, lam: float = 1e-8) -> torch.Tensor:
     """
     Minimum-norm least-squares solution via pseudo-inverse (differentiable).
     """
-    M = M + reg * torch.eye(M.shape[0], dtype=M.dtype, device=M.device)
+    M = M + lam * torch.eye(M.shape[0], dtype=M.dtype, device=M.device)
 
     return torch.linalg.lstsq(M, b).solution
+
+
+def solve_cd_tikhonov(
+    M: torch.Tensor, b: torch.Tensor, lam: float = 1e-4
+) -> torch.Tensor:
+    n = M.shape[0]
+    A = M.mT @ M + lam * torch.eye(n, dtype=M.dtype, device=M.device)
+    return torch.linalg.solve(A, M.mT @ b)
