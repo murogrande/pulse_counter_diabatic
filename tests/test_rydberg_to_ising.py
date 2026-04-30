@@ -1,4 +1,7 @@
-from pulse_counter_diabatic.rydberg_to_ising import from_rydberg_to_ising
+from pulse_counter_diabatic.rydberg_to_ising import (
+    from_rydberg_to_ising,
+    from_ising_to_rydberg,
+)
 from emu_mps import BitStrings
 import pulser
 import pytest
@@ -110,3 +113,75 @@ def test_rydberg_to_ising_no_observables_warning():
 
     with pytest.warns(UserWarning, match="initialized without any observables"):
         from_rydberg_to_ising(seq, config)
+
+
+def test_ising_to_rydberg_2_atoms():
+    num_atoms = 2
+    duration = 10
+
+    omegas_ising = torch.tensor([7.0] * num_atoms, dtype=torch.float64)
+    omegas_ising = torch.stack([omegas_ising] * duration, dim=0)
+
+    mus_ising = torch.tensor([5.0] * num_atoms, dtype=torch.float64)
+    mus_ising = torch.stack([mus_ising] * duration, dim=0)
+
+    nus_ising = torch.tensor([3.0] * num_atoms, dtype=torch.float64)
+    nus_ising = torch.stack([nus_ising] * duration, dim=0)
+
+    interaction_matrix_ising = torch.tensor(
+        [[0.0, 1.0], [1.0, 0.0]], dtype=torch.float64
+    )
+
+    omegas_rydberg, mus_rydberg, nus_rydberg, interaction_matrix_rydberg = (
+        from_ising_to_rydberg(
+            omegas_ising, mus_ising, nus_ising, interaction_matrix_ising
+        )
+    )
+
+    omegas_expected = omegas_ising
+    assert torch.allclose(omegas_rydberg, omegas_expected)
+    mus_expected = mus_ising
+    assert torch.allclose(mus_rydberg, mus_expected)
+    nus_expected = torch.zeros_like(nus_ising)
+    for i in range(num_atoms):
+        nus_expected[:, i] = 2 * nus_ising[:, i] + 2 * interaction_matrix_ising[i].sum()
+    assert torch.allclose(nus_rydberg, nus_expected)
+
+    interaction_matrix_expected = 4 * interaction_matrix_ising
+    assert torch.allclose(interaction_matrix_rydberg, interaction_matrix_expected)
+
+
+def test_ising_to_rydberg_3_atoms():
+    num_atoms = 3
+    duration = 10
+
+    omegas_ising = torch.tensor([7.0] * num_atoms, dtype=torch.float64)
+    omegas_ising = torch.stack([omegas_ising] * duration, dim=0)
+
+    mus_ising = torch.tensor([5.0] * num_atoms, dtype=torch.float64)
+    mus_ising = torch.stack([mus_ising] * duration, dim=0)
+
+    nus_ising = torch.tensor([3.0] * num_atoms, dtype=torch.float64)
+    nus_ising = torch.stack([nus_ising] * duration, dim=0)
+
+    interaction_matrix_ising = torch.tensor(
+        [[0.0, 1.0, 2.0], [1.0, 0.0, 3.0], [2.0, 3.0, 0.0]], dtype=torch.float64
+    )
+
+    omegas_rydberg, mus_rydberg, nus_rydberg, interaction_matrix_rydberg = (
+        from_ising_to_rydberg(
+            omegas_ising, mus_ising, nus_ising, interaction_matrix_ising
+        )
+    )
+
+    omegas_expected = omegas_ising
+    assert torch.allclose(omegas_rydberg, omegas_expected)
+    mus_expected = mus_ising
+    assert torch.allclose(mus_rydberg, mus_expected)
+    nus_expected = torch.zeros_like(nus_ising)
+    for i in range(num_atoms):
+        nus_expected[:, i] = 2 * nus_ising[:, i] + 2 * interaction_matrix_ising[i].sum()
+    assert torch.allclose(nus_rydberg, nus_expected)
+
+    interaction_matrix_expected = 4 * interaction_matrix_ising
+    assert torch.allclose(interaction_matrix_rydberg, interaction_matrix_expected)
