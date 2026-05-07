@@ -48,7 +48,7 @@ class CounterDiabaticPulse:
         dnus = diff2(self.nus_ising)  # 𝜈ᵢ'
         return domegas, dmus, dnus
 
-    def solver(self, nruns: int = 10):
+    def solver(self, nruns: int = 10) -> tuple:
         optimizer = torch.optim.Adam(
             [
                 {"params": self.omegas_ising, "lr": 1e-3},

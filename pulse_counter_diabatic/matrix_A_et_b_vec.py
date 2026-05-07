@@ -20,8 +20,8 @@ def A_direct_mat(
     optimized.
     """
     n_single = 3 * n_atoms
-    n_sym = 3 * len(list(combinations(range(n_atoms), 2)))
-    n_asym = 3 * len(list(permutations(range(n_atoms), 2)))
+    n_sym = 3 * n_atoms * (n_atoms - 1) // 2
+    n_asym = 3 * n_atoms * (n_atoms - 1)
     n_total = n_single + n_sym + n_asym
     asym_start = n_single + n_sym  # sing_plus_sym
 
@@ -118,7 +118,11 @@ def b_direct_vec(
     n_asym = 3 * len(list(permutations(range(n_atoms), 2)))
 
     singles = torch.stack(
-        [v for i in range(n_atoms) for v in (-dOmega_t[i], -dMu_t[i], -dNu_t[i])]
+        [
+            v
+            for i in range(n_atoms)
+            for v in (-dOmega_t[i] / 2, -dMu_t[i] / 2, -dNu_t[i] / 2)
+        ]
     )
     rest = torch.zeros(n_sym + n_asym, dtype=dtype)
     return torch.cat([singles, rest])
