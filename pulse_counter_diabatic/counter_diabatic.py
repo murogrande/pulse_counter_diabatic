@@ -15,7 +15,7 @@ class CounterDiabaticPulse:
         self.dt = config.dt
         self.n_atoms = len(seq.register.qubit_ids)
 
-    def compute_derivatives_analytical(
+    def compute_derivatives_numerically(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Differentiate Ising pulse parameters using 2nd-order finite
@@ -31,7 +31,7 @@ class CounterDiabaticPulse:
             dnus: Time derivative of ν (σᶻ coefficients), shape (T, N).
         """
 
-        def diff2(x):
+        def diff2(x: torch.Tensor) -> torch.Tensor:
             d0 = (-3 * x[0:1] + 4 * x[1:2] - x[2:3]) / (2 * self.dt)
             di = (x[2:] - x[:-2]) / (2 * self.dt)
             dn = (3 * x[-1:] - 4 * x[-2:-1] + x[-3:-2]) / (2 * self.dt)

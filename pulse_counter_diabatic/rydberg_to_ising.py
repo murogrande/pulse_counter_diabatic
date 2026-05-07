@@ -19,8 +19,8 @@ def from_rydberg_to_ising(
 
     Returns:
         omegas_ising: Half-Rabi drive, shape (T, N). Coefficients of σˣ.
-        nus_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
-        mus_ising: Shifted detuning, shape (T, N). Coefficients of σᶻ.
+        mus_ising: Zero phase tensor, shape (T, N). Coefficients of σʸ.
+        nus_ising: Shifted detuning, shape (T, N). Coefficients of σᶻ.
         interact_mat_ising: Rescaled interaction matrix (U/4), shape (N, N).
     """
 
