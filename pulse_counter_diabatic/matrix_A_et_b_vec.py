@@ -20,8 +20,8 @@ def A_direct_mat(
     optimized.
     """
     n_single = 3 * n_atoms
-    n_sym = 3 * len(list(combinations(range(n_atoms), 2)))
-    n_asym = 3 * len(list(permutations(range(n_atoms), 2)))
+    n_sym = 3 * n_atoms*(n_atoms - 1) // 2
+    n_asym = 3 * n_atoms*(n_atoms - 1)
     n_total = n_single + n_sym + n_asym
     asym_start = n_single + n_sym  # sing_plus_sym
 
