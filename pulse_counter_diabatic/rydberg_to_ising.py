@@ -11,7 +11,7 @@ def from_rydberg_to_ising(
     """Convert a Rydberg Pulser sequence to Ising model parameters.
 
     Maps the Rydberg Hamiltonian (Ω/2 σˣ - δ n + U/2 nᵢnⱼ) to the Ising form
-    (ω σˣ + μ σʸ + ν σᶻ + J σᶻσᶻ) via the substitution nᵢ = (1 - σᶻᵢ)/2.
+    (ω σˣ + μ σʸ + ν σᶻ + J/2 σᶻσᶻ) via the substitution nᵢ = (1 - σᶻᵢ)/2.
 
     Args:
         seq: Pulser sequence encoding the Rydberg drive and detuning.
@@ -49,13 +49,13 @@ def from_ising_to_rydberg(
     nus_ising: torch.Tensor,
     interact_mat_ising: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Converting from Ising 𝜔ᵢ 𝜎ˣᵢ + 𝜇ᵢ  𝜎ʸᵢ +𝜈ᵢ 𝜎ᶻᵢ + Uᵢⱼ 𝜎ᶻᵢ𝜎ᶻⱼ  to Rydberg
-    Hamiltonian 𝜔ᵢ 𝜎ˣᵢ + 𝜇ᵢ  𝜎ʸᵢ −𝜈ᵢ nᵢ + Uᵢⱼ nᵢ nⱼ .
+    """Converting from Ising 𝜔ᵢ 𝜎ˣᵢ + 𝜇ᵢ  𝜎ʸᵢ +𝜈ᵢ 𝜎ᶻᵢ + Uᵢⱼ/2 𝜎ᶻᵢ𝜎ᶻⱼ  to Rydberg
+    Hamiltonian (Ωᵢ/2 𝜎ˣᵢ - δᵢ nᵢ + Uᵢⱼ/2 nᵢnⱼ).
     Using the substitution 𝜎ᶻᵢ = 1 - 2 nᵢ"""
 
-    omegas_rydberg = omegas_ising
+    omegas_rydberg = 2 * omegas_ising
 
-    mus_rydberg = mus_ising
+    mus_rydberg = 2 * mus_ising
 
     nus_rydberg = torch.zeros_like(omegas_ising)
     for i in range(omegas_ising.shape[1]):

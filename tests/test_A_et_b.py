@@ -251,3 +251,7 @@ def test_b_direct_3_qubits():
     expected_b[8] = -dNu_t[2] / 2
 
     assert torch.allclose(b_vector, expected_b)
+
+
+def test_2_qubit_sequence():
+    pass

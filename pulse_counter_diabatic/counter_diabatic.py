@@ -1,8 +1,12 @@
 import torch
 import pulser
+import emu_base
 from pulser.backend import EmulationConfig
 
-from pulse_counter_diabatic.rydberg_to_ising import from_rydberg_to_ising
+from pulse_counter_diabatic.rydberg_to_ising import (
+    from_rydberg_to_ising,
+    from_ising_to_rydberg,
+)
 from pulse_counter_diabatic.matrix_A_et_b_vec import (
     A_direct_mat,
     b_direct_vec,
@@ -18,6 +22,7 @@ class CounterDiabaticPulse:
             self.nus_ising,  # 𝜈ᵢ 𝜎ᶻᵢ
             self.interaction_mat_ising,
         ) = from_rydberg_to_ising(seq, config)
+        self.seq = seq
         self.dt = config.dt
         self.n_atoms = len(seq.register.qubit_ids)
 
@@ -46,9 +51,12 @@ class CounterDiabaticPulse:
         domegas = diff2(self.omegas_ising)  # 𝜔ᵢ'
         dmus = diff2(self.mus_ising)  # 𝜇ᵢ'
         dnus = diff2(self.nus_ising)  # 𝜈ᵢ'
-        return domegas, dmus, dnus
+
+        # time should be in micros, not ns
+        return 1000 * domegas, 1000 * dmus, 1000 * dnus
 
     def solver(self, nruns: int = 10) -> tuple:
+        time_index_dim = self.omegas_ising.shape[0]
         optimizer = torch.optim.Adam(
             [
                 {"params": self.omegas_ising, "lr": 1e-3},
@@ -59,9 +67,10 @@ class CounterDiabaticPulse:
         for step in range(nruns):
             optimizer.zero_grad()
             domegas, dmus, dnus = self.compute_derivatives_numerically()
-            a_list, b_list, c_list = [], [], []
+            a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
+            b, c = torch.zeros_like(a), torch.zeros_like(a)
             loss = torch.tensor(0.0, dtype=torch.float64)
-            for k in range(len(self.omegas_ising)):
+            for k in range(time_index_dim):
                 M_t = A_direct_mat(
                     self.n_atoms,
                     self.omegas_ising[k],
@@ -73,9 +82,9 @@ class CounterDiabaticPulse:
                 coeffs = solve_cd_tikhonov(M_t, b_t)
 
                 loss = loss + (coeffs[3 * self.n_atoms :] ** 2).sum()
-                a_list.append(coeffs[0 : 3 * self.n_atoms : 3])  # X per qubit
-                b_list.append(coeffs[1 : 3 * self.n_atoms : 3])  # Y per qubit
-                c_list.append(coeffs[2 : 3 * self.n_atoms : 3])  # Z per qubit
+                a[k] = coeffs[0 : 3 * self.n_atoms : 3]  # X per qubit
+                b[k] = coeffs[1 : 3 * self.n_atoms : 3]  # Y per qubit
+                c[k] = coeffs[2 : 3 * self.n_atoms : 3]  # Z per qubit
 
             # gradient step to reduce 2-body CD terms
             loss.backward()
@@ -85,10 +94,6 @@ class CounterDiabaticPulse:
             optimizer.step()
 
             # direct update of 1-body with CD corrections
-            with torch.no_grad():
-                self.omegas_ising -= torch.stack(a_list).detach()
-                self.mus_ising -= torch.stack(b_list).detach()
-                self.nus_ising -= torch.stack(c_list).detach()
 
             print(f"step {step:4d}  loss = {loss.item():.6e}")
 
@@ -96,9 +101,30 @@ class CounterDiabaticPulse:
                 print(f"Early stopping at step {step} with loss {loss.item():.6f}")
                 break
 
-        return (
+        with torch.no_grad():
+            self.omegas_ising -= a
+            self.mus_ising -= b
+            self.nus_ising -= c
+        r, i, delta, interaction = from_ising_to_rydberg(
             self.omegas_ising,
             self.mus_ising,
             self.nus_ising,
             self.interaction_mat_ising,
+        )
+
+        omega = (r**2 + i**2).sqrt()
+        phi = torch.atan2(i, r)
+        target_times = [x * self.dt for x in range(0, omega.shape[0] + 1)]
+        return emu_base.SequenceData(
+            omega,
+            delta,
+            phi,
+            lambda x: interaction,
+            self.seq.register.qubit_ids,
+            bad_atoms=[False] * self.n_atoms,
+            lindblad_ops=[],
+            state_prep_error=0.0,
+            target_times=target_times,
+            eigenstates=("r", "g"),
+            hamiltonian_type=emu_base.HamiltonianType.Rydberg,
         )

@@ -138,9 +138,9 @@ def test_ising_to_rydberg_2_atoms():
         )
     )
 
-    omegas_expected = omegas_ising
+    omegas_expected = omegas_ising * 2
     assert torch.allclose(omegas_rydberg, omegas_expected)
-    mus_expected = mus_ising
+    mus_expected = mus_ising * 2
     assert torch.allclose(mus_rydberg, mus_expected)
     nus_expected = torch.zeros_like(nus_ising)
     for i in range(num_atoms):
@@ -174,9 +174,9 @@ def test_ising_to_rydberg_3_atoms():
         )
     )
 
-    omegas_expected = omegas_ising
+    omegas_expected = omegas_ising * 2
     assert torch.allclose(omegas_rydberg, omegas_expected)
-    mus_expected = mus_ising
+    mus_expected = mus_ising * 2
     assert torch.allclose(mus_rydberg, mus_expected)
     nus_expected = torch.zeros_like(nus_ising)
     for i in range(num_atoms):
