@@ -1,6 +1,7 @@
 import pulser
 import torch
 import emu_sv
+import numpy as np
 
 from pulse_counter_diabatic.counter_diabatic import CounterDiabaticPulse
 
@@ -80,6 +81,12 @@ def test_no_interaction():
 
     counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
     solution = counter_diabatic_pulse.solver()
+    config = emu_sv.SVConfig(
+        dt=dt,
+        observables=[
+            emu_sv.Occupation(evaluation_times=np.array(solution.target_times) / 1000)
+        ],
+    )
 
     results2 = emu_sv.SVBackend._run_from_sequence_data(solution, config)
     occupation2 = results2.occupation[-1]
