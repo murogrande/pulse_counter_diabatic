@@ -101,6 +101,23 @@ class CounterDiabaticPulse:
                 print(f"Early stopping at step {step} with loss {loss.item():.6f}")
                 break
 
+        domegas, dmus, dnus = self.compute_derivatives_numerically()
+        a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
+        b, c = torch.zeros_like(a), torch.zeros_like(a)
+        for k in range(time_index_dim):
+            M_t = A_direct_mat(
+                self.n_atoms,
+                self.omegas_ising[k],
+                self.mus_ising[k],
+                self.nus_ising[k],
+                self.interaction_mat_ising,
+            )
+            b_t = b_direct_vec(self.n_atoms, domegas[k], dmus[k], dnus[k])
+            coeffs = solve_cd_tikhonov(M_t, b_t)
+            a[k] = coeffs[0 : 3 * self.n_atoms : 3]  # X per qubit
+            b[k] = coeffs[1 : 3 * self.n_atoms : 3]  # Y per qubit
+            c[k] = coeffs[2 : 3 * self.n_atoms : 3]  # Z per qubit
+
         with torch.no_grad():
             self.omegas_ising += a
             self.mus_ising += b

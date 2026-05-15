@@ -2,6 +2,7 @@ import pulser
 import torch
 import emu_sv
 import numpy as np
+import pytest
 
 from pulse_counter_diabatic.counter_diabatic import CounterDiabaticPulse
 
@@ -56,7 +57,8 @@ def test_derivative():
     assert torch.allclose(dmu, mu_expected)
 
 
-def test_no_interaction():
+@pytest.mark.parametrize("nruns", [0, 1])
+def test_no_interaction(nruns):
     n_qubits = 3
 
     reg = pulser.Register.rectangle(1, n_qubits, prefix="q", spacing=torch.tensor(1e6))
@@ -81,7 +83,7 @@ def test_no_interaction():
 
     counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
     # the algorithm will converge to the exact solution in 1 iteration
-    solution = counter_diabatic_pulse.solver()
+    solution = counter_diabatic_pulse.solver(nruns=nruns)
     config = emu_sv.SVConfig(
         dt=dt,
         observables=[
