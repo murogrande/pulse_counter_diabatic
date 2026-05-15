@@ -102,9 +102,9 @@ class CounterDiabaticPulse:
                 break
 
         with torch.no_grad():
-            self.omegas_ising -= a
-            self.mus_ising -= b
-            self.nus_ising -= c
+            self.omegas_ising += a
+            self.mus_ising += b
+            self.nus_ising += c
         r, i, delta, interaction = from_ising_to_rydberg(
             self.omegas_ising,
             self.mus_ising,

@@ -80,6 +80,7 @@ def test_no_interaction():
     config = emu_sv.SVConfig(dt=dt, observables=[emu_sv.Occupation()])
 
     counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
+    # the algorithm will converge to the exact solution in 1 iteration
     solution = counter_diabatic_pulse.solver()
     config = emu_sv.SVConfig(
         dt=dt,
@@ -91,4 +92,4 @@ def test_no_interaction():
     results2 = emu_sv.SVBackend._run_from_sequence_data(solution, config)
     occupation2 = results2.occupation[-1]
     for x in occupation2:
-        assert x > 0.97
+        assert x > 1 - 1e-7  # ground state of the final hamiltonian is 111

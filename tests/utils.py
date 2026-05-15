@@ -31,19 +31,19 @@ def simulate_qutip(omega, mu, nu, interaction, counter_terms, times):
         op_list.append(
             [
                 single_qubit_gate(n_qubits, i, x),
-                (omega[:, i] - counter_terms[:, 3 * i]).detach().numpy(),
+                (omega[:, i] + counter_terms[:, 3 * i]).detach().numpy(),
             ]
         )
         op_list.append(
             [
                 single_qubit_gate(n_qubits, i, y),
-                (mu[:, i] - counter_terms[:, 3 * i + 1]).detach().numpy(),
+                (mu[:, i] + counter_terms[:, 3 * i + 1]).detach().numpy(),
             ]
         )
         op_list.append(
             [
                 single_qubit_gate(n_qubits, i, z),
-                (nu[:, i] - counter_terms[:, 3 * i + 2]).detach().numpy(),
+                (nu[:, i] + counter_terms[:, 3 * i + 2]).detach().numpy(),
             ]
         )
     for i in range(n_qubits):
@@ -62,62 +62,64 @@ def simulate_qutip(omega, mu, nu, interaction, counter_terms, times):
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], x, x),
-                -counter_terms[:, n_single + 3 * i].detach().numpy(),
+                +counter_terms[:, n_single + 3 * i].detach().numpy(),
             ]
         )
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], y, y),
-                -counter_terms[:, n_single + 3 * i + 1].detach().numpy(),
+                +counter_terms[:, n_single + 3 * i + 1].detach().numpy(),
             ]
         )
         op_list.append(
             [
-                two_qubit_gate(n_qubits, c[0], c[1], y, y),
-                -counter_terms[:, n_single + 3 * i + 2].detach().numpy(),
+                two_qubit_gate(n_qubits, c[0], c[1], z, z),
+                +counter_terms[:, n_single + 3 * i + 2].detach().numpy(),
             ]
         )
 
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], x, y),
-                -counter_terms[:, n_single + n_sym + 3 * i].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i].detach().numpy(),
             ]
         )
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], x, z),
-                -counter_terms[:, n_single + n_sym + 3 * i + 1].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i + 1].detach().numpy(),
             ]
         )
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], y, z),
-                -counter_terms[:, n_single + n_sym + 3 * i + 2].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i + 2].detach().numpy(),
             ]
         )
 
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], y, x),
-                -counter_terms[:, n_single + n_sym + 3 * i + 3].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i + 3].detach().numpy(),
             ]
         )
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], z, x),
-                -counter_terms[:, n_single + n_sym + 3 * i + 4].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i + 4].detach().numpy(),
             ]
         )
         op_list.append(
             [
                 two_qubit_gate(n_qubits, c[0], c[1], z, y),
-                -counter_terms[:, n_single + n_sym + 3 * i + 5].detach().numpy(),
+                +counter_terms[:, n_single + n_sym + 6 * i + 5].detach().numpy(),
             ]
         )
 
     h = qutip.QobjEvo(op_list, tlist=np_times)
 
-    return qutip.sesolve(
+    sol = qutip.sesolve(
         h, qutip.tensor([zero] * n_qubits), np.concatenate([[0], np_times, [1]])
     )
+
+    return sol
