@@ -57,54 +57,58 @@ class CounterDiabaticPulse:
 
     def solver(self, nruns: int = 10) -> tuple:
         time_index_dim = self.omegas_ising.shape[0]
-        optimizer = torch.optim.Adam(
-            [
-                {"params": self.omegas_ising, "lr": 1e-3},
-                {"params": self.mus_ising, "lr": 1e-3},
-                {"params": self.nus_ising, "lr": 1e-3},
-            ]
-        )
-        for step in range(nruns):
-            optimizer.zero_grad()
-            domegas, dmus, dnus = self.compute_derivatives_numerically()
-            a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
-            b, c = torch.zeros_like(a), torch.zeros_like(a)
-            loss = torch.tensor(0.0, dtype=torch.float64)
-            for k in range(time_index_dim):
-                M_t = A_direct_mat(
-                    self.n_atoms,
-                    self.omegas_ising[k],
-                    self.mus_ising[k],
-                    self.nus_ising[k],
-                    self.interaction_mat_ising,
-                )
-                b_t = b_direct_vec(self.n_atoms, domegas[k], dmus[k], dnus[k])
-                coeffs = solve_cd_tikhonov(M_t, b_t)
-
-                loss = loss + (coeffs[3 * self.n_atoms :] ** 2).sum()
-                a[k] = coeffs[0 : 3 * self.n_atoms : 3]  # X per qubit
-                b[k] = coeffs[1 : 3 * self.n_atoms : 3]  # Y per qubit
-                c[k] = coeffs[2 : 3 * self.n_atoms : 3]  # Z per qubit
-
-            # gradient step to reduce 2-body CD terms
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                [self.omegas_ising, self.mus_ising, self.nus_ising], max_norm=1
-            )
-            optimizer.step()
-
-            # direct update of 1-body with CD corrections
-
-            print(f"step {step:4d}  loss = {loss.item():.6e}")
-
-            if loss.item() < 0.0001:
-                print(f"Early stopping at step {step} with loss {loss.item():.6f}")
-                break
+        # optimizer = torch.optim.Adam(
+        #    [
+        #        {"params": self.omegas_ising, "lr": 1e-3},
+        #        {"params": self.mus_ising, "lr": 1e-3},
+        #        {"params": self.nus_ising, "lr": 1e-3},
+        #    ]
+        # )
+        # for step in range(nruns):
+        #    optimizer.zero_grad()
+        #    domegas, dmus, dnus = self.compute_derivatives_numerically()
+        #    a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
+        #    b, c = torch.zeros_like(a), torch.zeros_like(a)
+        #    loss = torch.tensor(0.0, dtype=torch.float64)
+        #    for k in range(time_index_dim):
+        #        M_t = A_direct_mat(
+        #            self.n_atoms,
+        #            self.omegas_ising[k],
+        #            self.mus_ising[k],
+        #            self.nus_ising[k],
+        #            self.interaction_mat_ising,
+        #        )
+        #        b_t = b_direct_vec(self.n_atoms, domegas[k], dmus[k], dnus[k])
+        #        coeffs = solve_cd_tikhonov(M_t, b_t)
+        #
+        #        loss = loss + (coeffs[3 * self.n_atoms :] ** 2).sum()
+        #        a[k] = coeffs[0 : 3 * self.n_atoms : 3]  # X per qubit
+        #        b[k] = coeffs[1 : 3 * self.n_atoms : 3]  # Y per qubit
+        #        c[k] = coeffs[2 : 3 * self.n_atoms : 3]  # Z per qubit
+        #
+        #    # gradient step to reduce 2-body CD terms
+        #    loss.backward()
+        #    torch.nn.utils.clip_grad_norm_(
+        #        [self.omegas_ising, self.mus_ising, self.nus_ising], max_norm=1
+        #    )
+        #    optimizer.step()
+        #
+        #    # direct update of 1-body with CD corrections
+        #
+        #    print(f"step {step:4d}  loss = {loss.item():.6e}")
+        #
+        #    if loss.item() < 0.0001:
+        #        print(f"Early stopping at step {step} with loss {loss.item():.6f}")
+        #        break
 
         domegas, dmus, dnus = self.compute_derivatives_numerically()
         a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
         b, c = torch.zeros_like(a), torch.zeros_like(a)
+        from time import time
+
+        total_start = time()
         for k in range(time_index_dim):
+            loop_start = time()
             M_t = A_direct_mat(
                 self.n_atoms,
                 self.omegas_ising[k],
@@ -117,6 +121,8 @@ class CounterDiabaticPulse:
             a[k] = coeffs[0 : 3 * self.n_atoms : 3]  # X per qubit
             b[k] = coeffs[1 : 3 * self.n_atoms : 3]  # Y per qubit
             c[k] = coeffs[2 : 3 * self.n_atoms : 3]  # Z per qubit
+            print("loop time:", time() - loop_start)
+        print("total time:", time() - total_start)
 
         with torch.no_grad():
             self.omegas_ising += a

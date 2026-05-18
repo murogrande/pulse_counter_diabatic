@@ -35,9 +35,9 @@ def from_rydberg_to_ising(
     interact_mat = seq0.interaction_matrix(0.0)  # matrix is constant in time
 
     U_sum = interact_mat.sum(dim=1)  # (N,) — row sums, diagonal is 0
-    omegas_ising = (0.5 * omegas).detach().requires_grad_(True)  # ω
-    mus_ising = torch.zeros_like(omegas).requires_grad_(True)  # μ
-    nus_ising = (0.5 * deltas - 0.25 * U_sum).detach().requires_grad_(True)  # ν
+    omegas_ising = (0.5 * omegas).detach()  # .requires_grad_(True)  # ω
+    mus_ising = torch.zeros_like(omegas)  # .requires_grad_(True)  # μ
+    nus_ising = (0.5 * deltas - 0.25 * U_sum).detach()  # .requires_grad_(True)  # ν
 
     interact_mat_ising = 0.25 * interact_mat
     return omegas_ising, mus_ising, nus_ising, interact_mat_ising
