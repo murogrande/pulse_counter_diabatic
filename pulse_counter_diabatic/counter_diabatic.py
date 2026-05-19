@@ -82,11 +82,7 @@ class CounterDiabaticPulse:
         else:
             n_steps = 1
         # ─────────────────────────────────────────────────────────────
-
-        a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
-        b = torch.zeros_like(a)
-        c = torch.zeros_like(a)
-
+        
         for step in range(n_steps):
 
             # ── COLD: deform ν before computing derivatives ───────────
@@ -101,13 +97,10 @@ class CounterDiabaticPulse:
             domegas = self._diff2(self.omegas_ising)
             dmus = self._diff2(self.mus_ising)
             dnus = self._diff2(nus)
-
-            a = torch.zeros(
-                (time_index_dim, self.n_atoms), dtype=torch.float64
-            )
+            a = torch.zeros((time_index_dim, self.n_atoms), dtype=torch.float64)
             b, c = torch.zeros_like(a), torch.zeros_like(a)
             loss = torch.tensor(0.0, dtype=torch.float64)
-
+           
             for k in range(time_index_dim):
                 M_t = A_direct_mat(
                     self.n_atoms,
@@ -131,18 +124,15 @@ class CounterDiabaticPulse:
             # ── COLD: gradient step on β only ────────────────────────
             if cold_fourier > 0:
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_([beta], max_norm=1)
                 optimizer.step()
                 print(
                     f"step {step:4d}  loss = {loss.item():.6e}  "
                 )
-
                 if loss.item() < 0.0001:
                     break
             else:
                 print(f"LCD  loss = {loss.item():.6e}  ")
-        # ─────────────────────────────────────────────────────────────
-
+        
         # ── apply 1-body CD corrections ──────
         if cold_fourier > 0:
             with torch.no_grad():
@@ -170,9 +160,9 @@ class CounterDiabaticPulse:
         phi = torch.atan2(i, r)
         target_times = [x * self.dt for x in range(0, omega.shape[0] + 1)]
         return emu_base.SequenceData(
-            omega,
-            delta,
-            phi,
+            omega.to(dtype=torch.complex128),
+            delta.to(dtype=torch.complex128),
+            phi.to(dtype=torch.complex128),
             lambda x: interaction,
             self.seq.register.qubit_ids,
             bad_atoms=[False] * self.n_atoms,
