@@ -144,9 +144,9 @@ class CounterDiabaticPulse:
             nus_final = self.nus_ising.clone()
 
         with torch.no_grad():
-            self.omegas_ising = self.omegas_ising + a
-            self.mus_ising = self.mus_ising + b
-            self.nus_ising = nus_final + c 
+            self.omegas_ising = self.omegas_ising - a
+            self.mus_ising = self.mus_ising - b
+            self.nus_ising = nus_final - c 
         # ─────────────────────────────────────────────────────────────
 
         r, i, delta, interaction = from_ising_to_rydberg(
