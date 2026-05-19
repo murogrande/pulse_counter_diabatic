@@ -55,8 +55,7 @@ class CounterDiabaticPulse:
             nruns: Number of optimisation steps when cold_fourier > 0.
                    Ignored otherwise (single pass).
             cold_fourier: Number of Fourier modes K for the COLD bare pulse
-                          (Čepaitė 2024, eq. 4.5):
-                              Δν(t) = Σ_k β_k sin(2πk · t/T),  k=1..K
+                            Δν(t) = Σ_k β_k sin(2πk · t/T),  k=1..K
                           Zero at both boundaries by construction.
                           If 0, the original LCD-only behaviour is used.
             lr: Adam learning rate for β optimisation.
