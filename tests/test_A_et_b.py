@@ -1,8 +1,18 @@
 from itertools import combinations, permutations
 
 import torch
+import pulser
 
-from pulse_counter_diabatic.matrix_A_et_b_vec import A_direct_mat, b_direct_vec
+from pulse_counter_diabatic.matrix_A_et_b_vec import (
+    A_direct_mat,
+    b_direct_vec,
+    solve_cd_tikhonov,
+)
+import emu_sv
+
+from pulse_counter_diabatic.counter_diabatic import CounterDiabaticPulse
+from utils import simulate_qutip
+import numpy as np
 
 dtype = torch.float64
 
@@ -251,3 +261,128 @@ def test_b_direct_3_qubits():
     expected_b[8] = -dNu_t[2] / 2
 
     assert torch.allclose(b_vector, expected_b)
+
+
+def test_2_qubit_sequence():
+    n_qubits = 2
+
+    reg = pulser.Register.rectangle(1, n_qubits, prefix="q", spacing=torch.tensor(8))
+
+    T = 1000
+
+    adiabatic_pulse = pulser.Pulse(
+        pulser.InterpolatedWaveform(
+            T, 2 * torch.sin(torch.arange(0, torch.pi, torch.pi / T))
+        ),
+        pulser.InterpolatedWaveform(
+            T, -2 * torch.cos(torch.arange(0, torch.pi, torch.pi / T))
+        ),
+        0,
+    )
+    seq = pulser.Sequence(reg, pulser.MockDevice)
+    seq.declare_channel("ising_global", "rydberg_global")
+    seq.add(adiabatic_pulse, "ising_global")
+
+    dt = 1
+    config = emu_sv.SVConfig(dt=dt, observables=[emu_sv.Occupation()])
+
+    counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
+    domegas, dmus, dnus = counter_diabatic_pulse.compute_derivatives_numerically()
+
+    time_index_dim = counter_diabatic_pulse.omegas_ising.shape[0]
+    coeffs = torch.zeros(
+        (
+            time_index_dim,
+            3 * n_qubits
+            + 3 * n_qubits * (n_qubits - 1) // 2
+            + 3 * n_qubits * (n_qubits - 1),
+        ),
+        dtype=torch.float64,
+    )
+    for k in range(time_index_dim):
+        M_t = A_direct_mat(
+            counter_diabatic_pulse.n_atoms,
+            counter_diabatic_pulse.omegas_ising[k],
+            counter_diabatic_pulse.mus_ising[k],
+            counter_diabatic_pulse.nus_ising[k],
+            counter_diabatic_pulse.interaction_mat_ising,
+        )
+        b_t = b_direct_vec(n_qubits, domegas[k], dmus[k], dnus[k])
+        coeffs[k] = solve_cd_tikhonov(M_t, b_t)
+    sol = simulate_qutip(
+        counter_diabatic_pulse.omegas_ising,
+        counter_diabatic_pulse.mus_ising,
+        counter_diabatic_pulse.nus_ising,
+        counter_diabatic_pulse.interaction_mat_ising,
+        coeffs,
+        [x + 0.5 for x in range(time_index_dim)],
+    )
+
+    afm = np.array(
+        [
+            np.abs(x.full()[1].item()) ** 2 + np.abs(x.full()[2].item()) ** 2
+            for x in sol.states
+        ]
+    )
+
+    assert afm[-1] > 1 - 1e-8  # for 2 qubits, the counter term is exact
+
+
+def test_3_qubit_sequence():
+    n_qubits = 3
+
+    reg = pulser.Register.rectangle(1, n_qubits, prefix="q", spacing=torch.tensor(8))
+
+    T = 1000
+
+    adiabatic_pulse = pulser.Pulse(
+        pulser.InterpolatedWaveform(
+            T, 2 * torch.sin(torch.arange(0, torch.pi, torch.pi / T))
+        ),
+        pulser.InterpolatedWaveform(
+            T, -2 * torch.cos(torch.arange(0, torch.pi, torch.pi / T))
+        ),
+        0,
+    )
+    seq = pulser.Sequence(reg, pulser.MockDevice)
+    seq.declare_channel("ising_global", "rydberg_global")
+    seq.add(adiabatic_pulse, "ising_global")
+
+    dt = 1
+    config = emu_sv.SVConfig(dt=dt, observables=[emu_sv.Occupation()])
+
+    counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
+    domegas, dmus, dnus = counter_diabatic_pulse.compute_derivatives_numerically()
+
+    time_index_dim = counter_diabatic_pulse.omegas_ising.shape[0]
+    coeffs = torch.zeros(
+        (
+            time_index_dim,
+            3 * n_qubits
+            + 3 * n_qubits * (n_qubits - 1) // 2
+            + 3 * n_qubits * (n_qubits - 1),
+        ),
+        dtype=torch.float64,
+    )
+    for k in range(time_index_dim):
+        M_t = A_direct_mat(
+            counter_diabatic_pulse.n_atoms,
+            counter_diabatic_pulse.omegas_ising[k],
+            counter_diabatic_pulse.mus_ising[k],
+            counter_diabatic_pulse.nus_ising[k],
+            counter_diabatic_pulse.interaction_mat_ising,
+        )
+        b_t = b_direct_vec(n_qubits, domegas[k], dmus[k], dnus[k])
+        coeffs[k] = solve_cd_tikhonov(M_t, b_t)
+    sol = simulate_qutip(
+        counter_diabatic_pulse.omegas_ising,
+        counter_diabatic_pulse.mus_ising,
+        counter_diabatic_pulse.nus_ising,
+        counter_diabatic_pulse.interaction_mat_ising,
+        coeffs,
+        [x + 0.5 for x in range(time_index_dim)],
+    )
+
+    afm = np.array([np.abs(x.full()[5].item()) ** 2 for x in sol.states])
+
+    assert afm[-1] > 0.93  # for 3 qubits, the counter term is not exact
