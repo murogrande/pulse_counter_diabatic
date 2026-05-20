@@ -1,6 +1,7 @@
 import pulser
 import torch
 import emu_sv
+import emu_mps
 import numpy as np
 import pytest
 
@@ -57,8 +58,12 @@ def test_derivative():
     assert torch.allclose(dmu, mu_expected)
 
 
+@pytest.mark.parametrize(
+    "backend",
+    [(emu_sv.SVBackend, emu_sv.SVConfig), (emu_mps.MPSBackend, emu_mps.MPSConfig)],
+)
 @pytest.mark.parametrize("nruns", [0, 1])
-def test_no_interaction(nruns):
+def test_no_interaction(nruns, backend):
     n_qubits = 3
 
     reg = pulser.Register.rectangle(1, n_qubits, prefix="q", spacing=torch.tensor(1e6))
@@ -79,19 +84,21 @@ def test_no_interaction(nruns):
     seq.add(adiabatic_pulse, "ising_global")
 
     dt = 1
-    config = emu_sv.SVConfig(dt=dt, observables=[emu_sv.Occupation()])
+    config = pulser.backend.EmulationConfig(
+        dt=dt, observables=[emu_sv.Occupation()], interaction_cutoff=0.0
+    )
 
     counter_diabatic_pulse = CounterDiabaticPulse(seq, config)
     # the algorithm will converge to the exact solution in 1 iteration
     solution = counter_diabatic_pulse.solver(nruns=nruns)
-    config = emu_sv.SVConfig(
+    config = backend[1](
         dt=dt,
         observables=[
             emu_sv.Occupation(evaluation_times=np.array(solution.target_times) / 1000)
         ],
     )
 
-    results2 = emu_sv.SVBackend._run_from_sequence_data(solution, config)
+    results2 = backend[0]._run_from_sequence_data(solution, config)
     occupation2 = results2.occupation[-1]
     for x in occupation2:
         assert x > 1 - 1e-7  # ground state of the final hamiltonian is 111

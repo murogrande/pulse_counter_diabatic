@@ -135,8 +135,10 @@ class CounterDiabaticPulse:
             self.interaction_mat_ising,
         )
 
-        omega = (r**2 + i**2).sqrt()
-        phi = torch.atan2(i, r)
+        delta = delta.to(dtype=torch.complex128)
+
+        omega = (r**2 + i**2).sqrt().to(dtype=torch.complex128)
+        phi = torch.atan2(i, r).to(dtype=torch.complex128)
         target_times = [x * self.dt for x in range(0, omega.shape[0] + 1)]
         return emu_base.SequenceData(
             omega,
