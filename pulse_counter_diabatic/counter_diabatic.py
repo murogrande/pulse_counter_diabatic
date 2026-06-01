@@ -237,6 +237,7 @@ class CounterDiabaticPulse:
         target_times = [
             x * self.dt for x in range(0, omega.shape[0] + 1)
         ]
+        print(self.n_atoms)
         return emu_base.SequenceData(
             omega.to(dtype=torch.complex128),
             delta.to(dtype=torch.complex128),
