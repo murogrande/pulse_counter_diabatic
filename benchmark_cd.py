@@ -6,9 +6,6 @@ import matplotlib.pyplot as plt
 import pulser
 from pulser.waveforms import InterpolatedWaveform, CustomWaveform
 
-import emu_sv
-from emu_sv import SVConfig, SVBackend, Occupation, StateResult, StateVector, Fidelity
-
 from pulse_counter_diabatic.counter_diabatic import CounterDiabaticPulse
 
 from pulser import AnalogDevice
@@ -17,6 +14,10 @@ import json
 import networkx as nx
 
 from pulser import Register
+import numpy as np
+import networkx as nx
+from pulser.register.special_layouts import TriangularLatticeLayout
+
 
 # ── DMRG ground-state helper ─────────────────────────────────────────────────
 from emu_mps import (
@@ -32,172 +33,62 @@ def dmrg_ground_state(seq):
     return target
 
 
-import numpy as np
-import networkx as nx
-from pulser import Register
-
-def create_lattice_clusters_and_chains(
-    n_clusters: int = 3,
-    atoms_per_cluster: int = 7,  # Target number of atoms in the final cluster
-    atoms_per_chain: int = 3,
-    fill_fraction: float = 0.7,  # Proportion of sites kept (e.g., 70%)
+def create_lattice_with_holes(
+    N: int,
+    density: float,
     spacing: float = 5.0,
-    seed: int | None = None
-):
-    """
-    Generates a Pulser register of interconnected atomic clusters on a triangular lattice.
-    Clusters are generated with random holes based on the fill_fraction.
-    """
-    rng = np.random.default_rng(seed)
+    n_traps: int = 200,
+) -> tuple:
 
-    # The 6 nearest-neighbor directions on a triangular lattice grid (u, v)
-    DIRS = [(1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
+    if not (0 < density <= 1.0):
+        raise ValueError(f"density must be in (0, 1], got {density}")
 
-    def to_cartesian(u, v):
-        """Converts discrete lattice coordinates to continuous XY plane."""
-        x = (u + 0.5 * v) * spacing
-        y = (v * np.sqrt(3) / 2) * spacing
-        return x, y
+    L = int(np.ceil(N / density))
+    if L > n_traps:
+        raise ValueError(
+            f"Need {L} candidate sites but layout only has {n_traps} traps. "
+            "Increase n_traps or decrease N/density."
+        )
 
-    def get_base_patch(n_sites):
-        """Creates a dense, roughly circular patch of lattice sites."""
-        radius = int(np.sqrt(n_sites)) + 3
-        candidates = []
-        for du in range(-radius, radius + 1):
-            for dv in range(-radius, radius + 1):
-                x, y = to_cartesian(du, dv)
-                candidates.append((x**2 + y**2, du, dv))
-        candidates.sort() # Sort by distance from origin
-        return [(u, v) for _, u, v in candidates[:n_sites]]
+    reg_layout = TriangularLatticeLayout(n_traps, spacing)
+    coords = reg_layout.coords
 
-    # 1. Determine the size of the dense template needed
-    dense_sites_needed = int(atoms_per_cluster / fill_fraction)
-    dense_template = get_base_patch(dense_sites_needed)
-    
-    def sample_cluster():
-        """Returns a cluster with holes by sampling the dense template."""
-        indices = rng.choice(len(dense_template), size=atoms_per_cluster, replace=False)
-        return [dense_template[i] for i in indices]
+    idx_sorted = np.argsort(np.linalg.norm(coords, axis=1))
+    idx_avail  = idx_sorted[:L]
 
-    # Initialize the first cluster
-    c0 = sample_cluster()
-    occupied = set(c0)
-    clusters = [c0]
-    chains = []
+    idx_list = np.random.choice(idx_avail, size=N, replace=False).tolist()
 
-    # Iteratively attach new clusters
-    for i in range(1, n_clusters):
-        placed = False
-        parents = list(range(i))
-        rng.shuffle(parents) # Randomize which cluster we branch from
+    register = reg_layout.define_register(*idx_list)
 
-        for p in parents:
-            if placed: break
-            dirs = list(DIRS)
-            rng.shuffle(dirs)
-
-            for (du, dv) in dirs:
-                parent_patch = clusters[p]
-                
-                # Projection function to find the furthest atom in a given direction
-                dx, dy = to_cartesian(du, dv)
-                def proj(u, v):
-                    px, py = to_cartesian(u, v)
-                    return px * dx + py * dy
-                
-                # Attachment atom on the parent (furthest in direction (du, dv))
-                attach_p = max(parent_patch, key=lambda node: proj(node[0], node[1]))
-
-                # Build the chain nodes
-                chain_nodes = []
-                for k in range(1, atoms_per_chain + 1):
-                    chain_nodes.append((attach_p[0] + k * du, attach_p[1] + k * dv))
-                
-                chain_end = chain_nodes[-1] if chain_nodes else attach_p
-                target_attach_c = (chain_end[0] + du, chain_end[1] + dv)
-
-                # Sample a fresh child cluster with holes
-                child_base = sample_cluster()
-
-                # Attachment point on the child (furthest in OPPOSITE direction)
-                attach_c_base = max(child_base, key=lambda node: proj(-node[0], -node[1]))
-
-                # Shift the child cluster so its attachment point lands exactly on target
-                shift_u = target_attach_c[0] - attach_c_base[0]
-                shift_v = target_attach_c[1] - attach_c_base[1]
-                shifted_patch = [(u + shift_u, v + shift_v) for u, v in child_base]
-
-                # Collision check on the integer grid
-                new_nodes = set(chain_nodes) | set(shifted_patch)
-                if occupied.isdisjoint(new_nodes):
-                    occupied.update(new_nodes)
-                    chains.append(chain_nodes)
-                    clusters.append(shifted_patch)
-                    placed = True
-                    break
-
-        if not placed:
-            raise RuntimeError("Could not place cluster! The layout became trapped. Try a different seed.")
-
-    # Convert everything to cartesian coordinates for Pulser & NetworkX
-    coords = {}
-    node_idx = 0
-    cluster_ids = []
-    
-    for cl in clusters:
-        ids = []
-        for (u, v) in cl:
-            qid = f"q{node_idx}"
-            coords[qid] = to_cartesian(u, v)
-            ids.append(qid)
-            node_idx += 1
-        cluster_ids.append(ids)
-
-    chain_ids = []
-    for ch in chains:
-        ids = []
-        for (u, v) in ch:
-            qid = f"q{node_idx}"
-            coords[qid] = to_cartesian(u, v)
-            ids.append(qid)
-            node_idx += 1
-        chain_ids.append(ids)
-
-    reg = Register(coords)
-
-    # Build NetworkX Graph (edges connect atoms separated by exactly `spacing`)
+    selected_coords = coords[idx_list]
     G = nx.Graph()
-    G.add_nodes_from(coords.keys())
-    qids = list(coords.keys())
-    for i in range(len(qids)):
-        for j in range(i + 1, len(qids)):
-            p1, p2 = np.array(coords[qids[i]]), np.array(coords[qids[j]])
-            if np.linalg.norm(p1 - p2) < spacing * 1.05:
-                G.add_edge(qids[i], qids[j])
+    G.add_nodes_from(range(N))
+    threshold = spacing * 1.05
+    for i in range(N):
+        for j in range(i + 1, N):
+            if np.linalg.norm(selected_coords[i] - selected_coords[j]) < threshold:
+                G.add_edge(i, j)
 
-    return reg, G, cluster_ids, chain_ids
+    return register, G, idx_list
 
 nruns=10
 
 all_benchmark_data = []
-n_clusters=int(sys.argv[1])
-atoms_per_cluster=int(sys.argv[2])
-atoms_per_chain=int(sys.argv[3])
-    
-for run in range(nruns):
+N        = int(sys.argv[1])
+density  = float(sys.argv[2])
+T        = int(sys.argv[3])
+nfourier = int(sys.argv[4])
 
-    reg, graph, cluster_ids, chain_ids = create_lattice_clusters_and_chains(
-    n_clusters=n_clusters, 
-    atoms_per_cluster=atoms_per_cluster, 
-    atoms_per_chain=atoms_per_chain, 
-    spacing=7.0,
+for run in range(nruns):
+    reg, graph, idx_list = create_lattice_with_holes(
+        N       = N,
+        density = density,
     )
     
-    # --- Baseline adiabatic protocol ------------------------------------------------
-    T = 1000        
-    dt = 1           
-    delta_max = 10.0  
-    omega_max = 10.0   
+    # --- Baseline adiabatic protocol ------------------------------------------------      
+    dt = 10   
+    delta_max = AnalogDevice.channels['rydberg_global'].max_abs_detuning
+    omega_max = AnalogDevice.channels['rydberg_global'].max_amp
     C6= AnalogDevice.interaction_coeff
 
     pulse_times = np.arange(T)                              
@@ -224,7 +115,7 @@ for run in range(nruns):
 
     # COLD 
     cd_cold = CounterDiabaticPulse(seq, config_for_cd)
-    seq_data_cold = cd_cold.solver(cold_fourier=5, nruns=100, lr=1e-2)
+    seq_data_cold = cd_cold.solver(cold_fourier=nfourier, nruns=100, lr=1e-2)
 
 
     config = MPSConfig(
@@ -261,7 +152,7 @@ for run in range(nruns):
 
 # 4. Save everything to a JSON file after the loop finishes
 
-filename = "benchmark_results_long_nc"+str(n_clusters)+"_na"+str(atoms_per_cluster)+"_nac"+str(atoms_per_chain)+".json"
+filename = "./benchmark_results/benchmark_results_nfourier_"+str(nfourier)+"_dt_"+str(dt)+"_N_"+str(N)+"_density_"+str(density)+".json"
 with open(filename, "w") as f:
     json.dump(all_benchmark_data, f, indent=4)
     
