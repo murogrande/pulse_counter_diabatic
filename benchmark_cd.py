@@ -152,7 +152,7 @@ for run in range(nruns):
 
 # 4. Save everything to a JSON file after the loop finishes
 
-filename = "./benchmark_results/benchmark_results_nfourier_"+str(nfourier)+"_dt_"+str(dt)+"_N_"+str(N)+"_density_"+str(density)+".json"
+filename = "./benchmark_results/benchmark_results_T_"+str(T)+"_nfourier_"+str(nfourier)+"_dt_"+str(dt)+"_N_"+str(N)+"_density_"+str(density)+".json"
 with open(filename, "w") as f:
     json.dump(all_benchmark_data, f, indent=4)
     

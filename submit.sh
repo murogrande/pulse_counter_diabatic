@@ -8,11 +8,11 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=logs/benchmark_cd_%A-%a.log
 #SBATCH --error=logs/benchmark_cd_%A-%a.log
-#SBATCH --array=0-107
+#SBATCH --array=0-269
 # ─────────────────────────────────────────────────────────────────────────────
 # Parameter grid
 # ─────────────────────────────────────────────────────────────────────────────
-N_VALUES=(40 50 60 80) #=(4 6 8 10)
+N_VALUES=(4 6 8 10 15 20 30 40 50 80) #=(4 6 8 10)
 DENSITY_VALUES=(0.5 0.7 0.9)
 T_VALUES=(500 1000 2000)
 NFOURIER_VALUES=(0 1 2)
